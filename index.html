@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Финмодель пекарни</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="model.js"></script>
+<style>
+:root{
+  color-scheme:light;
+  --bg:#f6f5f2; --surface:#ffffff; --surface-2:#faf9f7; --border:#e4e2dc;
+  --text:#2b2b2b; --text-2:#5c5b57; --muted:#8a8984;
+  --accent:#FF8A00; --accent-soft:#FFF5EC; --accent-ink:#b35f00;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --pos:#2a78d6; --neg:#eb6834;
+  --good:#0a7a33; --bad:#c2410c; --grid:#ecebe6; --zero:#9c9b95;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#141413; --surface:#1d1d1b; --surface-2:#242422; --border:#34332f;
+    --text:#ecebe6; --text-2:#c3c2b7; --muted:#8f8e86;
+    --accent:#FF9A44; --accent-soft:#2c2116; --accent-ink:#ffb36b;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --pos:#3987e5; --neg:#d95926;
+    --good:#4ade80; --bad:#fb923c; --grid:#2a2a27; --zero:#6b6a64;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141413; --surface:#1d1d1b; --surface-2:#242422; --border:#34332f;
+  --text:#ecebe6; --text-2:#c3c2b7; --muted:#8f8e86;
+  --accent:#FF9A44; --accent-soft:#2c2116; --accent-ink:#ffb36b;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --pos:#3987e5; --neg:#d95926;
+  --good:#4ade80; --bad:#fb923c; --grid:#2a2a27; --zero:#6b6a64;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1440px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px;margin-bottom:18px}
+h1{font-size:24px;line-height:1.2;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--text-2);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px}
+.tab{appearance:none;border:0;background:transparent;color:var(--text-2);font:inherit;font-weight:600;padding:8px 16px;border-radius:9px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--accent);color:#fff}
+.tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.layout.no-aside{grid-template-columns:minmax(0,1fr)}
+.layout.no-aside aside{display:none}
+main{min-width:0}
+aside{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+@media (max-width:980px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside{position:static;max-height:none;order:-1}
+}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;box-shadow:var(--shadow)}
+.panel + .panel{margin-top:16px}
+.panel h2{font-size:17px;margin:0 0 4px;font-weight:700}
+.panel .hint{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.grp{margin-top:14px}
+.grp-title{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.field{display:grid;grid-template-columns:1fr 128px;align-items:center;gap:8px;margin-bottom:8px}
+.field label{font-size:13.5px;color:var(--text-2)}
+.inp{display:flex;align-items:center;background:var(--accent-soft);border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.inp:focus-within{border-color:var(--accent)}
+.inp input{width:100%;min-width:0;border:0;background:transparent;color:var(--text);font:inherit;font-variant-numeric:tabular-nums;padding:7px 4px 7px 9px;text-align:right}
+.inp input[type=date]{text-align:left;padding-right:6px}
+.inp .unit{flex:none;font-size:12px;color:var(--muted);padding:0 9px 0 2px;white-space:nowrap}
+.btn{appearance:none;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:inherit;font-size:13px;font-weight:600;border-radius:9px;padding:8px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+details.fixed{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}
+details.fixed summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--text-2)}
+.kv{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--border)}
+.kv span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.warn{margin-top:10px;font-size:12.5px;color:var(--bad)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:16px}
+.card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 14px 13px;box-shadow:var(--shadow);min-width:0}
+.card .ttl{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;font-size:13px;color:var(--text-2);font-weight:500;min-height:36px}
+.card .val{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.card .note{font-size:12.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.card .val.good{color:var(--good)} .card .val.bad{color:var(--bad)}
+.info{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);font:600 12px/1 Inter,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0}
+.info:hover,.info[aria-expanded="true"]{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.pop{display:none;position:absolute;z-index:20;left:10px;right:10px;top:44px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px 13px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:13px;line-height:1.5;color:var(--text)}
+.pop b{display:block;margin:6px 0 2px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.pop b:first-child{margin-top:0}
+.pop code{font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;background:var(--surface-2);border-radius:6px;padding:1px 4px}
+.card.open .pop{display:block}
+
+.charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.charts .wide{grid-column:1/-1}
+@media (max-width:760px){.charts{grid-template-columns:minmax(0,1fr)}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:var(--shadow);min-width:0}
+.chart-card h3{font-size:15px;margin:0;font-weight:700}
+.chart-card .cap{font-size:12.5px;color:var(--muted);margin:3px 0 10px}
+.chart-box{position:relative;height:280px}
+.chart-box.tall{height:340px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--text-2);margin:0 0 8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend i.line{height:3px;border-radius:2px;vertical-align:3px;width:14px}
+
+.tbl-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:right}
+thead th{position:sticky;top:0;background:var(--surface-2);color:var(--text-2);font-weight:600;z-index:2}
+th.l,td.l{text-align:left}
+td.expl{color:var(--muted);font-size:12px;white-space:normal;min-width:180px;max-width:240px;text-align:left}
+.sticky{position:sticky;left:0;background:var(--surface);z-index:1}
+thead .sticky{z-index:3;background:var(--surface-2)}
+tr.tot td{font-weight:700;background:var(--surface-2)}
+tr.tot td.sticky{background:var(--surface-2)}
+tr.sec td{font-weight:700;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;background:var(--bg)}
+td.neg{color:var(--bad)}
+.rep h2{font-size:18px;margin:22px 0 10px}
+.rep h2:first-child{margin-top:0}
+
+.sc-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:16px}
+.sc-grid .panel + .panel{margin-top:0}
+.delta input{width:64px;text-align:right}
+.delta .inp{display:inline-flex;width:auto}
+.badges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:640px){.badges{grid-template-columns:minmax(0,1fr)}}
+.badge{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+.badge .nm{font-size:13px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:8px}
+.badge .nm i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.badge .big{font-size:22px;font-weight:700;margin-top:6px}
+.badge .st{font-size:12.5px;margin-top:4px;font-weight:600}
+.badge .st.ok{color:var(--good)} .badge .st.no{color:var(--bad)}
+.foot{margin-top:28px;color:var(--muted);font-size:12px}
+
+/* ---------- записка ---------- */
+.memo-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.memo-head h2{font-size:21px;margin:0}
+.memo-head .meta{color:var(--muted);font-size:12.5px;margin-top:4px}
+.memo-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.toc{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:8px 0 10px;margin-bottom:8px;background:var(--bg)}
+.toc a{flex:none;font-size:12.5px;font-weight:600;color:var(--text-2);text-decoration:none;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:5px 11px}
+.toc a:hover,.toc a.on{border-color:var(--accent);color:var(--accent-ink);background:var(--accent-soft)}
+.msec{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow);scroll-margin-top:60px}
+.msec > .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;position:relative}
+.msec h3{font-size:17px;margin:0 0 4px}
+.msec .lead{color:var(--text-2);font-size:13.5px;margin:0 0 12px}
+.msec .info{margin-top:2px}
+.msec .pop{top:34px;left:auto;right:0;width:min(360px,90vw)}
+.msec.open > .hd .pop{display:block}
+.verdict{display:flex;gap:14px;align-items:flex-start;border-radius:14px;padding:14px 16px;margin-bottom:14px;border:1px solid}
+.verdict.ok{background:color-mix(in srgb,var(--good) 8%,transparent);border-color:color-mix(in srgb,var(--good) 35%,transparent)}
+.verdict.bad{background:color-mix(in srgb,var(--bad) 8%,transparent);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+.verdict .ico{font-size:22px;line-height:1}
+.verdict b{display:block;font-size:15.5px;margin-bottom:2px}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:6px}
+.cmp .c{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.cmp .c .l{font-size:12.5px;color:var(--text-2)}
+.cmp .c .v{font-size:15px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+.cmp .c .v small{display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:2px}
+.cmp .c .v .bad{color:var(--bad)} .cmp .c .v .good{color:var(--good)}
+.term{border-bottom:1px dashed var(--muted);cursor:help;position:relative}
+.term:hover::after,.term:focus::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:max-content;max-width:280px;white-space:normal;background:var(--text);color:var(--surface);font-size:12.5px;line-height:1.45;font-weight:400;padding:8px 10px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.chk{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.chk:last-child{border-bottom:0}
+.chk input{margin-top:3px;width:17px;height:17px;accent-color:var(--accent);flex:none}
+.chk .t{flex:1;min-width:0}
+.chk .t .n{font-weight:600;font-size:14px}
+.chk .t .s{font-size:12.5px;color:var(--muted)}
+.chk .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+details.issue{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface-2)}
+details.issue summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:center;padding:11px 12px;font-weight:600;font-size:14px}
+details.issue summary::-webkit-details-marker{display:none}
+details.issue summary::before{content:'▸';color:var(--muted);transition:transform .15s}
+details.issue[open] summary::before{transform:rotate(90deg)}
+details.issue summary .nm{flex:1;min-width:0}
+details.issue summary .amt{font-variant-numeric:tabular-nums;font-size:13px;color:var(--text-2);white-space:nowrap}
+details.issue .body{padding:0 14px 12px 32px;font-size:13.5px;color:var(--text-2)}
+details.issue .body b{color:var(--text)}
+details.issue code{font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1px 5px}
+.sev{flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;border:1px solid}
+.sev.h{color:var(--bad);border-color:var(--bad)}
+.sev.m{color:#b7791f;border-color:#d69e2e}
+.sev.l{color:var(--muted);border-color:var(--border)}
+.lever{display:grid;grid-template-columns:auto minmax(0,1fr) 150px 120px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.lever:last-child{border-bottom:0}
+.lever input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.lever .n{font-weight:600;font-size:14px}
+.lever .s{font-size:12.5px;color:var(--muted)}
+.lever input[type=range]{width:100%;accent-color:var(--accent)}
+.lever .rv{font-size:12.5px;color:var(--text-2);text-align:center;font-variant-numeric:tabular-nums}
+.lever .eff{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;color:var(--good)}
+.lever.off .eff{color:var(--muted);font-weight:500}
+@media (max-width:700px){.lever{grid-template-columns:auto minmax(0,1fr)}.lever .rng,.lever .eff{grid-column:2}.lever .eff{text-align:left}}
+.ba{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.ba .c{border-radius:12px;padding:12px;border:1px solid var(--border);background:var(--surface-2)}
+.ba .c .l{font-size:12.5px;color:var(--text-2)}
+.ba .c .row{display:flex;align-items:baseline;gap:8px;margin-top:4px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.ba .c .was{color:var(--muted);text-decoration:line-through;font-size:13px}
+.ba .c .now{font-size:17px;font-weight:700}
+.plan .chk .n{font-weight:500}
+.plan .chk.done .n{text-decoration:line-through;color:var(--muted)}
+.progress{height:8px;border-radius:99px;background:var(--grid);overflow:hidden;margin:4px 0 10px}
+.progress i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .2s}
+.note-box{font-size:12.5px;color:var(--muted);border-left:3px solid var(--border);padding:4px 0 4px 10px;margin-top:10px}
+/* тур */
+.tour-dim{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:40}
+.tour-target{position:relative;z-index:41;box-shadow:0 0 0 4px var(--accent)!important}
+.tour-box{position:fixed;z-index:42;width:min(360px,calc(100vw - 32px));background:var(--surface);color:var(--text);border:1px solid var(--accent);border-radius:14px;padding:14px 16px;box-shadow:0 16px 40px rgba(0,0,0,.25)}
+.tour-box .st{font-size:11.5px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.tour-box h4{margin:4px 0 6px;font-size:15.5px}
+.tour-box p{margin:0 0 12px;font-size:13.5px;color:var(--text-2)}
+.tour-box .nav{display:flex;gap:8px;justify-content:flex-end}
+/* ---------- мобильная версия ---------- */
+.aside-toggle{display:none}
+@media (max-width:980px){
+  .aside-toggle{display:flex;width:100%;justify-content:space-between;align-items:center;appearance:none;border:0;background:transparent;color:var(--text);font:inherit;font-size:16px;font-weight:700;padding:0;cursor:pointer;text-align:left}
+  .aside-toggle .chev{font-size:13px;color:var(--accent-ink);font-weight:600;white-space:nowrap}
+  aside .panel > h2{display:none}
+  aside.collapsed .aside-body{display:none}
+  aside .aside-sum{font-size:12.5px;color:var(--muted);margin-top:4px}
+  aside:not(.collapsed) .aside-sum{display:none}
+}
+@media (max-width:640px){
+  body{font-size:14.5px}
+  .wrap{padding:14px 12px 40px}
+  h1{font-size:20px}
+  header.top{margin-bottom:12px}
+  .tabs{width:100%;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .tab{padding:9px 2px;font-size:13px}
+  .layout{gap:12px}
+  .panel{padding:14px;border-radius:14px}
+  .field{grid-template-columns:minmax(0,1fr) 140px}
+  .inp input{font-size:16px;padding:9px 4px 9px 9px}
+  .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .card{padding:11px 11px 10px;border-radius:12px}
+  .card .ttl{font-size:12.5px;min-height:32px}
+  .card .val{font-size:17px}
+  .card .note{font-size:11.5px}
+  .info{width:30px;height:30px;font-size:14px}
+  .pop,.msec .pop{position:fixed;left:12px;right:12px;top:auto;bottom:12px;width:auto;max-height:60vh;overflow:auto;z-index:50;font-size:14px;box-shadow:0 -6px 30px rgba(0,0,0,.25)}
+  .term:hover::after,.term:focus::after{position:fixed;left:12px;right:12px;top:auto;bottom:12px;max-width:none;width:auto;font-size:14px;z-index:50}
+  .charts{gap:12px}
+  .chart-card{padding:12px;border-radius:14px}
+  .chart-box{height:230px}
+  .chart-box.tall{height:260px}
+  th,td{padding:6px 8px;font-size:12.5px}
+  td.expl{min-width:140px}
+  .badges{gap:8px}
+  .badge .big{font-size:19px}
+  .delta input{width:52px;font-size:16px}
+  .msec{padding:14px;border-radius:14px}
+  .msec h3{font-size:16px}
+  .memo-head h2{font-size:18px}
+  .memo-actions{width:100%}
+  .memo-actions .btn{flex:1}
+  .cmp{grid-template-columns:minmax(0,1fr)}
+  .verdict{padding:12px}
+  .tour-box{left:12px!important;right:12px;top:auto!important;bottom:12px;width:auto}
+  .lever input[type=checkbox],.chk input{width:20px;height:20px}
+  details.issue summary{flex-wrap:wrap;row-gap:4px}
+  details.issue summary .nm{flex-basis:calc(100% - 110px)}
+  details.issue summary .amt{flex-basis:100%;padding-left:20px;white-space:normal}
+  details.issue .body{padding:0 12px 12px 20px}
+  .chk{flex-wrap:wrap}
+  .chk .amt{flex-basis:100%;padding-left:27px}
+  .btn{padding:10px 12px}
+}
+@media print{
+  header.top,aside,.toc,.memo-actions,.foot,.info{display:none!important}
+  .layout{grid-template-columns:1fr!important}
+  [data-page]:not([data-page="memo"]){display:none!important}
+  [data-page="memo"]{display:block!important}
+  .msec{break-inside:avoid;box-shadow:none}
+  details.issue{break-inside:avoid}
+  details.issue .body{display:block}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Финансовая модель пекарни</h1>
+      <div class="sub">Расчёты повторяют листы «Финмодель» и «Сценарный анализ» исходной таблицы</div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Страницы">
+      <button class="tab" role="tab" data-tab="model" aria-selected="true">Модель</button>
+      <button class="tab" role="tab" data-tab="scenarios" aria-selected="false">Сценарии</button>
+      <button class="tab" role="tab" data-tab="reports" aria-selected="false">Отчёты</button>
+      <button class="tab" role="tab" data-tab="memo" aria-selected="false">Записка</button>
+    </nav>
+  </header>
+
+  <div class="layout" id="layout">
+    <main>
+      <!-- ===== МОДЕЛЬ ===== -->
+      <section id="page-model" data-page="model">
+        <div class="cards" id="cards"></div>
+        <div class="charts">
+          <div class="chart-card wide">
+            <h3>Окупаемость инвестиций</h3>
+            <p class="cap" id="cap-payback">Накопленный денежный поток по месяцам</p>
+            <div class="legend"><span><i style="background:var(--neg)"></i>Вложения ещё не вернулись</span><span><i style="background:var(--pos)"></i>Проект окупился</span></div>
+            <div class="chart-box tall"><canvas id="ch-payback" aria-label="Окупаемость: накопленный денежный поток по месяцам"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h3>От выручки к чистой прибыли</h3>
+            <p class="cap">Один месяц, ₽: куда уходит выручка</p>
+            <div class="legend"><span><i style="background:var(--s1)"></i>Итог</span><span><i style="background:var(--s2)"></i>Расход</span></div>
+            <div class="chart-box"><canvas id="ch-waterfall"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h3>Структура расходов</h3>
+            <p class="cap">Один месяц, ₽ и % от выручки</p>
+            <div class="chart-box"><canvas id="ch-costs"></canvas></div>
+          </div>
+          <div class="chart-card wide">
+            <h3>Притоки и оттоки денег</h3>
+            <p class="cap">По месяцам, ₽: в первый месяц отток включает покупку оборудования</p>
+            <div class="legend"><span><i style="background:var(--s1)"></i>Итого приток</span><span><i style="background:var(--s2)"></i>Итого отток</span><span><i class="line" style="background:var(--s3)"></i>Чистый денежный поток</span></div>
+            <div class="chart-box"><canvas id="ch-flows"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== СЦЕНАРИИ ===== -->
+      <section id="page-scenarios" data-page="scenarios" hidden>
+        <div class="badges" id="sc-badges"></div>
+        <div class="sc-grid">
+          <div class="panel">
+            <h2>Сценарные допущения</h2>
+            <p class="hint">Изменение к базе в процентах: +10 — на 10 % больше, −5 — на 5 % меньше.</p>
+            <div class="tbl-wrap"><table id="sc-deltas"></table></div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="sc-reset">Вернуть допущения по умолчанию</button>
+              <button class="btn" id="sc-zero">Обнулить все допущения</button>
+            </div>
+          </div>
+          <div class="panel">
+            <h2>Базовые параметры</h2>
+            <p class="hint">Те же значения, что в панели справа; меняются там. Постоянные — с листа «Параметры».</p>
+            <div class="tbl-wrap"><table id="sc-base"></table></div>
+          </div>
+        </div>
+        <div class="charts" style="margin-bottom:16px">
+          <div class="chart-card wide">
+            <h3>Окупаемость по сценариям</h3>
+            <p class="cap" id="cap-sc-payback">Накопленный денежный поток, ₽. Линия пересекает ноль — проект окупился</p>
+            <div class="legend" id="lg-sc"></div>
+            <div class="chart-box tall"><canvas id="ch-sc-cum"></canvas></div>
+          </div>
+          <div class="chart-card wide">
+            <h3>Сравнение сценариев</h3>
+            <p class="cap">Один месяц, ₽</p>
+            <div class="legend" id="lg-sc2"></div>
+            <div class="chart-box"><canvas id="ch-sc-bars"></canvas></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Расчёт по сценариям</h2>
+          <p class="hint">Строки 29–45 листа «Сценарный анализ», расчёт за один месяц. Строки «Денежный поток со 2-го месяца» и «Месяц окупаемости» добавлены к листу.</p>
+          <div class="tbl-wrap"><table id="sc-calc"></table></div>
+        </div>
+      </section>
+
+      <!-- ===== ОТЧЁТЫ ===== -->
+      <section id="page-reports" data-page="reports" class="rep" hidden>
+        <h2>Блок 2. Отчёт о прибылях и убытках</h2>
+        <div class="tbl-wrap"><table id="tbl-pl"></table></div>
+        <h2>Блок 3. Отчёт о движении денежных средств</h2>
+        <div class="tbl-wrap"><table id="tbl-cf"></table></div>
+      </section>
+      <!-- ===== ЗАПИСКА ===== -->
+      <section id="page-memo" data-page="memo" hidden>
+        <div class="memo-head">
+          <div>
+            <h2>Аналитическая записка по финансовой модели пекарни</h2>
+            <div class="meta" id="memo-meta"></div>
+          </div>
+          <div class="memo-actions">
+            <button class="btn primary" id="tour-start" type="button">Как читать записку</button>
+            <button class="btn" type="button" onclick="window.print()">Распечатать / PDF</button>
+          </div>
+        </div>
+        <nav class="toc" id="memo-toc" aria-label="Содержание записки">
+          <a href="#m-sum">1. Вывод</a><a href="#m-miss">2. Что не учтено</a><a href="#m-err">3. Ошибки формул</a>
+          <a href="#m-cash">4. Деньги</a><a href="#m-risk">5. Риски</a><a href="#m-tax">6. Налоги</a>
+          <a href="#m-sim">7. Решения</a><a href="#m-plan">8. План</a>
+        </nav>
+
+        <div class="msec" id="m-sum">
+          <div class="hd"><div><h3>1. Главный вывод</h3><p class="lead">Сравнение того, что показывают формулы таблицы, и того, что получится, если учесть все расходы с листа «Параметры».</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b>Итог записки в двух колонках: «по модели» — ровно формулы таблицы; «с поправками» — те же формулы плюс расходы, которые есть в «Параметрах», но не попали в «Финмодель», и исправленный ДДС.<b>Как пользоваться</b>Поправки включаются и выключаются галочками в разделе 2. Все цифры пересчитываются при изменении параметров справа.</div></div>
+          <div id="m-verdict"></div>
+          <div class="cmp" id="m-cmp"></div>
+        </div>
+
+        <div class="msec" id="m-miss">
+          <div class="hd"><div><h3>2. Расходы, которых нет в модели</h3><p class="lead">Эти статьи заполнены на листе «Параметры», но в «Финмодель» не попали. Отметьте, какие учитывать в оценке.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b>Ежемесячные расходы, которые таблица не считает, и их сумму при текущей выручке.<b>Как считается</b>Проценты берутся от выручки строки 26, суммы — как на листе «Параметры». Ремонт — 3 % CAPEX в год, поделённые на 12.<b>Почему важно</b>Каждая галочка уменьшает прибыль в разделе 1 и сдвигает окупаемость в разделе 4.</div></div>
+          <div id="m-miss-list"></div>
+          <div class="note-box" id="m-miss-total"></div>
+        </div>
+
+        <div class="msec" id="m-err">
+          <div class="hd"><div><h3>3. Ошибки в формулах таблицы</h3><p class="lead">Нажмите на строку — откроется, что не так, во сколько это обходится и как исправить формулу.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b>Места, где формулы таблицы расходятся с её же параметрами или с логикой учёта.<b>Как читать</b>Метка «высокая» — ошибка меняет вывод об окупаемости, «средняя» — искажает отдельные строки, «низкая» — косметика. Справа — сколько рублей в месяц искажено.</div></div>
+          <div id="m-err-list"></div>
+        </div>
+
+        <div class="msec" id="m-cash">
+          <div class="hd"><div><h3>4. Деньги и окупаемость: модель против реальности</h3><p class="lead">Накопленный денежный поток по формулам таблицы и после исправления ДДС с учётом отмеченных в разделе 2 расходов.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b>Две линии накопленного потока. Где линия пересекает ноль — там окупаемость.<b>Что исправлено</b>Со 2-го месяца поставщикам платится полная себестоимость сырья (отсрочка переходит, а не исчезает); упаковка, санитария и логистика сырья попадают в отток; добавлены отмеченные расходы раздела 2 (взносы уже есть в ДДС, повторно не вычитаются).</div></div>
+          <div class="legend"><span><i class="line" style="background:var(--s1)"></i>По формулам таблицы</span><span><i class="line" style="background:var(--s2)"></i>С поправками</span></div>
+          <div class="chart-box tall"><canvas id="ch-memo-cash"></canvas></div>
+          <div class="cmp" id="m-cash-cmp" style="margin-top:12px"></div>
+        </div>
+
+        <div class="msec" id="m-risk">
+          <div class="hd"><div><h3>5. Риски: запас прочности</h3><p class="lead">На сколько процентов может ухудшиться параметр, прежде чем чистая прибыль по модели станет нулевой.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b><span>Чем короче столбец, тем опаснее параметр: маленькое отклонение съедает всю прибыль.</span><b>Как считается</b>Прибыль меняется линейно по каждому параметру. Запас = прибыль / (изменение прибыли при отклонении параметра на 1 %). Для выручки — падение, для затрат — рост. Считается по формулам модели, без поправок раздела 2.</div></div>
+          <div class="chart-box"><canvas id="ch-memo-risk"></canvas></div>
+          <div class="note-box" id="m-risk-note"></div>
+        </div>
+
+        <div class="msec" id="m-tax">
+          <div class="hd"><div><h3>6. Налоги: где можно сэкономить и где ждёт НДС</h3><p class="lead">Модель считает УСН 6 % с выручки и больше ничего. Ниже — варианты, которые стоит проверить с бухгалтером.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что показывает</b>Сравнение налога за месяц при разных вариантах УСН и проверку порога освобождения от НДС по годам горизонта.<b>Важно</b>Это оценка по данным модели. Объект УСН меняется только с 1 января, решение принимается вместе с бухгалтером по действующей редакции НК РФ (ст. 145, 164, 346.20, 346.21).</div></div>
+          <div class="tbl-wrap"><table id="m-tax-tbl"></table></div>
+          <div id="m-vat" style="margin-top:12px"></div>
+        </div>
+
+        <div class="msec" id="m-sim">
+          <div class="hd"><div><h3>7. Решения: симулятор</h3><p class="lead">Включайте меры и двигайте ползунки — внизу видно, как меняются прибыль, окупаемость и потребность в деньгах с поправками.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Как пользоваться</b>Галочка включает меру, ползунок задаёт её силу. Справа — прирост прибыли от одной этой меры. Внизу — итог всех включённых мер вместе.<b>Как считается</b>Меры по чеку, трафику, себестоимости и комиссии пересчитываются полной моделью. Списания и налог — поправками раздела 2 и 6. Эффекты мер не складываются арифметически: итог считается одним расчётом.</div></div>
+          <div id="m-levers"></div>
+          <div class="ba" id="m-ba"></div>
+        </div>
+
+        <div class="msec plan" id="m-plan">
+          <div class="hd"><div><h3>8. План действий</h3><p class="lead">Отмечайте выполненное — прогресс сохраняется в этом браузере.</p></div>
+            <button class="info" type="button" aria-label="Пояснение к разделу">?</button>
+            <div class="pop"><b>Что это</b>Порядок работ: сначала исправить модель, чтобы решения принимались по честным цифрам, потом внедрять меры из раздела 7.<b>Почему такой порядок</b>Пока модель не учитывает списания, эквайринг и отток поставщикам, она показывает окупаемость там, где её нет.</div></div>
+          <div class="progress"><i id="m-plan-bar" style="width:0"></i></div>
+          <div id="m-plan-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== ПАРАМЕТРЫ ===== -->
+    <aside id="aside">
+      <div class="panel">
+        <button class="aside-toggle" id="aside-toggle" type="button" aria-expanded="true" aria-controls="aside-body"><span>Изменяемые параметры</span><span class="chev">Изменить ▾</span></button>
+        <div class="aside-sum" id="aside-sum"></div>
+        <h2>Изменяемые параметры</h2>
+        <div class="aside-body" id="aside-body">
+        <p class="hint">Голубые ячейки листа «Финмодель». Модель пересчитывается сразу.</p>
+        <form id="inputs" autocomplete="off" onsubmit="return false"></form>
+        <div class="warn" id="mix-warn" hidden></div>
+        <div style="margin-top:12px"><button class="btn" id="reset" type="button">Вернуть значения по умолчанию</button></div>
+        <details class="fixed">
+          <summary>Постоянные параметры (лист «Параметры»)</summary>
+          <div id="fixed" style="margin-top:8px"></div>
+        </details>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <div class="foot">Все суммы в рублях. Формулы перенесены из таблицы без изменений, в том числе спорные места: маркетинг прибавляется к расходам как сумма в рублях, упаковка, санитария и логистика сырья заданы долями 3 / 2 / 5 % от выручки, ФОТ в ДДС учитывается со взносами ×1,34.</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var M = window.FinModel;
+
+/* ---------- форматирование ---------- */
+var nf = new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2});
+function num(v){ return isFinite(v) ? nf.format(v) : '—'; }
+function rub(v){ return isFinite(v) ? nf.format(v) + ' ₽' : '—'; }
+function pct(v){ return isFinite(v) ? nf.format(v*100) + ' %' : '—'; }
+function compact(v){
+  var a=Math.abs(v);
+  if(a>=1e9) return nf.format(+(v/1e9).toFixed(2))+' млрд';
+  if(a>=1e6) return nf.format(+(v/1e6).toFixed(2))+' млн';
+  if(a>=1e3) return nf.format(+(v/1e3).toFixed(1))+' тыс';
+  return nf.format(v);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+/* ---------- изменяемые параметры ---------- */
+var FIELDS = [
+  {grp:'Период'},
+  {key:'startDate', label:'Дата старта проекта', type:'date', unit:''},
+  {key:'horizon', label:'Горизонт планирования', unit:'мес', min:1, max:24, step:1},
+  {grp:'Продажи'},
+  {key:'traffic', label:'Трафик', unit:'чел/час', min:0, step:1},
+  {key:'conversion', label:'Конверсия в покупку', unit:'%', pct:true, min:0, max:100, step:0.1},
+  {key:'avgCheck', label:'Средний чек', unit:'₽', min:0, step:1},
+  {key:'hoursPerDay', label:'Часы работы в день', unit:'ч/день', min:0, max:24, step:0.5},
+  {key:'daysPerMonth', label:'Рабочих дней в месяце', unit:'дн/мес', min:0, max:31, step:1},
+  {grp:'Затраты и каналы продаж'},
+  {key:'cogsShare', label:'Доля себестоимости', unit:'%', pct:true, min:0, max:100, step:0.1},
+  {key:'marketing', label:'Маркетинг', unit:'₽/мес', min:0, step:0.5},
+  {key:'retailShare', label:'Доля розницы', unit:'%', pct:true, min:0, max:100, step:1},
+  {key:'deliveryShare', label:'Доля доставки', unit:'%', pct:true, min:0, max:100, step:1}
+];
+var state = Object.assign({}, M.DEFAULTS);
+var deltas = JSON.parse(JSON.stringify(M.DEFAULT_DELTAS));
+
+function buildInputs(){
+  var html='';
+  FIELDS.forEach(function(f){
+    if(f.grp){ html += (html?'</div>':'')+'<div class="grp"><div class="grp-title">'+esc(f.grp)+'</div>'; return; }
+    var v = f.pct ? +(state[f.key]*100).toFixed(4) : state[f.key];
+    var attrs = (f.type==='date'?'type="date"':'type="number" inputmode="decimal"')+
+      (f.min!=null?' min="'+f.min+'"':'')+(f.max!=null?' max="'+f.max+'"':'')+(f.step!=null?' step="'+f.step+'"':'');
+    html += '<div class="field"><label for="in-'+f.key+'">'+esc(f.label)+'</label>'+
+      '<div class="inp"><input id="in-'+f.key+'" data-key="'+f.key+'" '+attrs+' value="'+esc(v)+'">'+
+      (f.unit?'<span class="unit">'+esc(f.unit)+'</span>':'')+'</div></div>';
+  });
+  html += '</div>';
+  document.getElementById('inputs').innerHTML = html;
+}
+document.getElementById('inputs').addEventListener('input', function(e){
+  var el=e.target, key=el.dataset.key; if(!key) return;
+  var f=FIELDS.filter(function(x){return x.key===key;})[0];
+  if(f.type==='date'){ if(el.value) state[key]=el.value; }
+  else {
+    var v=parseFloat(String(el.value).replace(',','.'));
+    if(!isFinite(v)) return;
+    state[key] = f.pct ? v/100 : v;
+  }
+  renderAll();
+});
+document.getElementById('reset').addEventListener('click', function(){
+  state = Object.assign({}, M.DEFAULTS); buildInputs(); renderAll();
+});
+
+function buildFixed(){
+  var F=M.FIXED, rows=[
+    ['ФОТ (пекари, продавцы, управление)', rub(F.payroll)+'/мес'],
+    ['Аренда', rub(F.rent)+'/мес'],
+    ['Коммунальные услуги', rub(F.utilities)+'/мес'],
+    ['Прочие административные', rub(F.otherAdmin)+'/мес'],
+    ['Комиссия агрегаторов', pct(F.aggregatorFee)+' от выручки доставки'],
+    ['Стоимость оборудования (CAPEX)', rub(F.capex)],
+    ['Срок полезного использования', F.usefulLife+' мес'],
+    ['Отсрочка поставщикам (DPO)', F.dpoDays+' дн'],
+    ['Ставка УСН', pct(F.taxRate)+' от выручки'],
+    ['Ставка дисконтирования', pct(F.discountRate)+' годовых']
+  ];
+  document.getElementById('fixed').innerHTML = rows.map(function(r){return '<div class="kv"><span>'+esc(r[0])+'</span><span>'+esc(r[1])+'</span></div>';}).join('');
+}
+
+/* ---------- карточки ---------- */
+function cardsData(r){
+  var k=r.kpi, F=M.FIXED, T=r.T, sum=function(a){return a.reduce(function(s,x){return s+x;},0);};
+  var payLbl = k.paybackMonth ? k.paybackMonth+'-й месяц' : 'не окупается';
+  return [
+    {t:'Выручка в месяц', v:rub(r.revenue[0]), n:'За '+T+' мес: '+rub(sum(r.revenue)),
+     what:'Сколько денег приносят продажи за месяц до всех расходов.',
+     how:'Трафик (чел/час) × часы работы в день × рабочие дни в месяце × конверсия × средний чек. Строка 26.'},
+    {t:'Валовая прибыль', v:rub(r.grossProfit[0]), n:'Валовая маржа: '+pct(r.grossMargin[0]),
+     what:'Что остаётся после прямых затрат на продукцию. Маржа показывает, какая доля каждого рубля выручки остаётся после себестоимости.',
+     how:'Выручка − себестоимость итого. Себестоимость = сырьё (выручка × доля себестоимости) + упаковка 3 % + санитария 2 % + логистика сырья 5 % от выручки. Маржа = валовая прибыль / выручка. Строки 27–33.'},
+    {t:'EBITDA в месяц', v:rub(r.ebitda[0]), n:'От выручки: '+pct(r.ebitda[0]/r.revenue[0]), sign:r.ebitda[0],
+     what:'Операционная прибыль до амортизации, процентов и налогов: зарабатывает ли пекарня на основной деятельности.',
+     how:'Валовая прибыль − комиссии агрегаторов (выручка × доля доставки × 20 %) − OPEX (ФОТ + аренда + коммунальные + маркетинг + прочие). Строка 41.'},
+    {t:'Чистая прибыль в месяц', v:rub(r.netProfit[0]), n:'Чистая рентабельность: '+pct(r.netMargin[0]), sign:r.netProfit[0],
+     what:'Что остаётся владельцу за месяц после всех расходов и налога.',
+     how:'EBITDA − амортизация (CAPEX / 84 мес) − финансовые расходы (0) − УСН 6 % от выручки. Рентабельность = чистая прибыль / выручка. Строки 42–47.'},
+    {t:'NPV', v:rub(k.npv), n:'Ставка дисконтирования '+pct(F.discountRate)+' годовых', sign:k.npv,
+     what:'Чистая приведённая стоимость: все денежные потоки проекта за горизонт, пересчитанные на сегодняшний день. NPV > 0 — проект создаёт стоимость и выгоден при ставке 30 % годовых.',
+     how:'Месячная ставка = (1 + 30 %)^(1/12) − 1. Поток 1-го месяца берётся без дисконта, поток месяца t делится на (1 + месячная ставка)^(t−1). Ячейка C70.'},
+    {t:'IRR (годовая)', v:k.irrAnnual==null?'не считается':pct(k.irrAnnual), n:k.irrAnnual==null?'нет положительных значений в периоде':'Сравнить со ставкой 30 %', sign:k.irrAnnual==null?null:k.irrAnnual-F.discountRate,
+     what:'Внутренняя норма доходности: какую доходность в год даёт проект. Выше ставки дисконтирования 30 % — проект выгоден, ниже — неэффективен. Можно сравнить с депозитом или другими вложениями.',
+     how:'Месячная IRR по чистым денежным потокам за горизонт (строка 63), переведённая в годовую: (1 + IRR)^12 − 1. Если в потоках нет одновременно отрицательных и положительных значений, IRR не считается. Ячейка C73.'},
+    {t:'Месяц окупаемости', v:payLbl, n:k.paybackMonth?r.months[k.paybackMonth-1]:'за '+T+' мес', sign:k.paybackMonth?1:-1,
+     what:'Через сколько месяцев вложения вернутся.',
+     how:'Первый месяц, в котором накопленный денежный поток (строка 65) становится больше нуля. Ячейка C72.'},
+    {t:'Потребность в инвестициях', v:rub(k.investmentNeed), n:'CAPEX (оборудование): '+rub(F.capex),
+     what:'Сколько собственных денег нужно, чтобы пекарня не ушла в кассовый минус, пока не окупится. Отдельной строкой — CAPEX: печь, расстойка, тестомес, холодильники, витрина, вентиляция.',
+     how:'Наибольший минус накопленного денежного потока за горизонт: max(0; −min(накопленный поток)). Ячейка C71. CAPEX — сумма строк «Стоимость оборудования» листа «Параметры»; он уже учтён в оттоке 1-го месяца.'},
+    {t:'Деньги на конец горизонта', v:rub(r.cashEnd[T-1]), n:'Остаток на '+r.months[T-1], sign:r.cashEnd[T-1],
+     what:'Сколько денег накопится на счёте к последнему месяцу горизонта.',
+     how:'Остаток на начало месяца + чистый денежный поток месяца (приток − отток). Строка 64, последний месяц.'},
+    {t:'Микс каналов продаж', v:k.mixOk?'✓ 100 %':'⚠ не 100 %', n:'Розница '+pct(state.retailShare)+' + доставка '+pct(state.deliveryShare), sign:k.mixOk?1:-1,
+     what:'Проверка, что доли розницы и доставки в сумме дают 100 % выручки.',
+     how:'|доля розницы + доля доставки − 1| < 0,01. Ячейка B6. В расчётах участвует только доля доставки — через комиссии агрегаторов.'}
+  ];
+}
+function renderCards(r){
+  var html = cardsData(r).map(function(c,i){
+    var cls = c.sign==null?'':(c.sign<0?' bad':'');
+    return '<div class="card" data-i="'+i+'"><div class="ttl"><span>'+esc(c.t)+'</span>'+
+      '<button class="info" type="button" aria-expanded="false" aria-label="Что означает «'+esc(c.t)+'»">?</button></div>'+
+      '<div class="val'+cls+'">'+esc(c.v)+'</div><div class="note">'+esc(c.n)+'</div>'+
+      '<div class="pop" role="tooltip"><b>Что это</b>'+esc(c.what)+'<b>Как считается</b>'+esc(c.how)+'</div></div>';
+  }).join('');
+  var box=document.getElementById('cards'), openI=(box.querySelector('.card.open')||{}).dataset;
+  box.innerHTML=html;
+  if(openI&&openI.i!=null){ var c=box.querySelector('.card[data-i="'+openI.i+'"]'); if(c){c.classList.add('open');c.querySelector('.info').setAttribute('aria-expanded','true');} }
+}
+function closePops(except){
+  document.querySelectorAll('.card.open, .msec.open').forEach(function(c){ if(c!==except){ c.classList.remove('open'); c.querySelector('.info').setAttribute('aria-expanded','false'); } });
+}
+document.addEventListener('click', function(e){
+  var b=e.target.closest('.info');
+  if(b){ var c=b.closest('.card, .msec'); closePops(c); var o=c.classList.toggle('open'); b.setAttribute('aria-expanded',o?'true':'false'); return; }
+  if(!e.target.closest('.pop')) closePops();
+});
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePops(); });
+
+/* ---------- графики ---------- */
+var charts={};
+function css(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function mk(id, cfg){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), cfg);
+}
+function baseOpts(extra){
+  var grid=css('--grid'), zero=css('--zero'), tx=css('--text-2');
+  Chart.defaults.font.family='Inter, system-ui, sans-serif';
+  Chart.defaults.color=tx;
+  var o={
+    responsive:true, maintainAspectRatio:false, animation:{duration:250},
+    interaction:{mode:'index', intersect:false},
+    plugins:{legend:{display:false}, tooltip:{backgroundColor:css('--surface'), titleColor:css('--text'), bodyColor:css('--text'),
+      borderColor:css('--border'), borderWidth:1, padding:10, boxPadding:4,
+      callbacks:{label:function(c){ var v=c.raw; if(Array.isArray(v)) v=v[1]-v[0]; return ' '+(c.dataset.label?c.dataset.label+': ':'')+rub(v); }}}},
+    scales:{
+      x:{grid:{display:false}, border:{color:grid}, ticks:{maxRotation:0, autoSkipPadding:8}},
+      y:{border:{display:false}, ticks:{callback:function(v){return compact(v);}},
+         grid:{color:function(c){ return c.tick && c.tick.value===0 ? zero : grid; }, lineWidth:function(c){ return c.tick && c.tick.value===0 ? 1.5 : 1; }}}
+    }
+  };
+  return Object.assign(o, extra||{});
+}
+
+function renderModelCharts(r){
+  var pos=css('--pos'), neg=css('--neg'), s1=css('--s1'), s2=css('--s2'), s3=css('--s3'), surf=css('--surface');
+  var k=r.kpi;
+
+  // 1. Окупаемость — столбцы накопленного потока
+  document.getElementById('cap-payback').textContent = 'Накопленный денежный поток по месяцам, ₽. ' +
+    (k.paybackMonth ? 'Окупаемость: '+k.paybackMonth+'-й месяц ('+r.months[k.paybackMonth-1]+'). ' : 'За горизонт проект не окупается. ') +
+    'Вложено в оборудование: '+rub(M.FIXED.capex)+'.';
+  mk('ch-payback',{type:'bar', data:{labels:r.months, datasets:[{label:'Накопленный поток', data:r.cumFlow,
+      backgroundColor:r.cumFlow.map(function(v){return v>0?pos:neg;}), borderRadius:4, borderSkipped:false, maxBarThickness:36,
+      borderColor:surf, borderWidth:{left:1,right:1}}]},
+    options:baseOpts({interaction:{mode:'nearest',intersect:false,axis:'x'}})});
+
+  // 2. Водопад
+  var R=r.revenue[0], steps=[['Себестоимость',r.cogsTotal[0]],['Комиссии',r.commissions[0]],['OPEX',r.opexTotal[0]],['Амортизация',r.depreciation[0]],['Налог УСН',r.tax[0]]];
+  var labels=['Выручка'], data=[[0,R]], colors=[s1], cur=R;
+  steps.forEach(function(s){ labels.push(s[0]); data.push([cur-s[1],cur]); colors.push(s2); cur-=s[1]; });
+  labels.push('Чистая прибыль'); data.push([0,r.netProfit[0]]); colors.push(s1);
+  var ow=baseOpts(); ow.scales.x.ticks={autoSkip:false, maxRotation:45, minRotation:0, font:{size:11}};
+  mk('ch-waterfall',{type:'bar', data:{labels:labels, datasets:[{data:data, backgroundColor:colors, borderRadius:4, borderSkipped:false, maxBarThickness:44}]},
+    options:Object.assign(ow,{interaction:{mode:'nearest',intersect:true},
+      plugins:Object.assign(baseOpts().plugins,{tooltip:Object.assign(baseOpts().plugins.tooltip,{callbacks:{label:function(c){
+        var v=c.raw[1]-c.raw[0], i=c.dataIndex; return ' '+(i===0||i===labels.length-1?'':'− ')+rub(v)+' ('+pct(v/R)+' выручки)'; }}})})})});
+
+  // 3. Структура расходов
+  var items=[['Сырьё',r.cogsRaw[0]],['Упаковка',r.cogsPack[0]],['Санитария',r.cogsSanit[0]],['Логистика сырья',r.cogsLogist[0]],
+    ['Комиссии агрегаторов',r.commissions[0]],['ФОТ',r.opexPayroll[0]],['Аренда',r.opexRent[0]],['Коммунальные',r.opexUtilities[0]],
+    ['Маркетинг',r.opexMarketing[0]],['Прочие',r.opexOther[0]],['Амортизация',r.depreciation[0]],['Налог УСН',r.tax[0]]]
+    .sort(function(a,b){return b[1]-a[1];});
+  var o3=baseOpts({indexAxis:'y', interaction:{mode:'nearest',intersect:false,axis:'y'}});
+  o3.scales={x:{border:{display:false},grid:{color:css('--grid')},ticks:{maxTicksLimit:5,callback:function(v){return compact(v);}}}, y:{grid:{display:false},border:{color:css('--grid')},ticks:{autoSkip:false,font:{size:11}}}};
+  o3.plugins.tooltip.callbacks={label:function(c){ return ' '+rub(c.raw)+' · '+pct(c.raw/R)+' выручки'; }};
+  mk('ch-costs',{type:'bar', data:{labels:items.map(function(x){return x[0];}), datasets:[{data:items.map(function(x){return x[1];}),
+    backgroundColor:s2, borderRadius:4, borderSkipped:false, maxBarThickness:18}]}, options:o3});
+
+  // 4. Притоки / оттоки
+  mk('ch-flows',{data:{labels:r.months, datasets:[
+      {type:'line', label:'Чистый денежный поток', data:r.netCf, borderColor:s3, backgroundColor:s3, borderWidth:2, pointRadius:0, pointHoverRadius:5, tension:0, order:0},
+      {type:'bar', label:'Итого приток', data:r.inflow, backgroundColor:s1, borderRadius:4, maxBarThickness:18, order:1},
+      {type:'bar', label:'Итого отток', data:r.outflow, backgroundColor:s2, borderRadius:4, maxBarThickness:18, order:1}]},
+    options:baseOpts()});
+}
+
+/* ---------- сценарии ---------- */
+var SC_COLORS=['--s1','--s3','--s2']; // оптимистичный, базовый, пессимистичный — цвет закреплён за сценарием
+var DELTA_ROWS=[['traffic','Трафик'],['conversion','Конверсия в покупку'],['avgCheck','Средний чек'],['cogsShare','Доля себестоимости в выручке'],['payroll','ФОТ']];
+
+function buildDeltas(){
+  var names=['Оптимистичный','Базовый','Пессимистичный'];
+  var h='<thead><tr><th class="l sticky">Наименование</th>'+names.map(function(n){return '<th>'+n+'</th>';}).join('')+'</tr></thead><tbody>';
+  DELTA_ROWS.forEach(function(row){
+    h+='<tr><td class="l sticky">'+row[1]+'</td>';
+    for(var i=0;i<3;i++){
+      var v=+(deltas[i][row[0]]*100).toFixed(4);
+      h+='<td class="delta"><span class="inp"><input type="number" step="1" inputmode="decimal" aria-label="'+esc(row[1]+', '+names[i])+'" data-s="'+i+'" data-k="'+row[0]+'" value="'+v+'"><span class="unit">%</span></span></td>';
+    }
+    h+='</tr>';
+  });
+  document.getElementById('sc-deltas').innerHTML=h+'</tbody>';
+}
+document.getElementById('sc-deltas').addEventListener('input',function(e){
+  var el=e.target; if(el.dataset.s==null) return;
+  var v=parseFloat(String(el.value).replace(',','.')); if(!isFinite(v)) v=0;
+  deltas[+el.dataset.s][el.dataset.k]=v/100; renderScenarios();
+});
+document.getElementById('sc-reset').addEventListener('click',function(){ deltas=JSON.parse(JSON.stringify(M.DEFAULT_DELTAS)); buildDeltas(); renderScenarios(); });
+document.getElementById('sc-zero').addEventListener('click',function(){ deltas=deltas.map(function(){return {traffic:0,conversion:0,avgCheck:0,cogsShare:0,payroll:0};}); buildDeltas(); renderScenarios(); });
+
+function renderScenarios(){
+  var p=state, F=M.FIXED, s=M.scenarios(p,deltas), H=M.MAX_MONTHS;
+  // базовые параметры (B4:B17)
+  var base=[['Трафик',num(p.traffic),'чел/час'],['Конверсия в покупку',pct(p.conversion),''],['Средний чек',num(p.avgCheck),'₽'],
+    ['Часы работы в день',num(p.hoursPerDay),'ч/день'],['Рабочих дней в месяце',num(p.daysPerMonth),'дн/мес'],
+    ['Доля себестоимости в выручке',pct(p.cogsShare),''],['% доставка',pct(p.deliveryShare),''],['Комиссия агрегаторов',pct(F.aggregatorFee),''],
+    ['ФОТ',num(F.payroll),'₽/мес'],['Аренда',num(F.rent),'₽/мес'],['Коммунальные услуги',num(F.utilities),'₽/мес'],
+    ['Амортизация',num(F.capex/F.usefulLife),'₽/мес'],['CAPEX',num(F.capex),'₽'],['Ставка налогообложения (УСН)',pct(F.taxRate),'']];
+  document.getElementById('sc-base').innerHTML='<thead><tr><th class="l">Наименование</th><th>Значение</th><th class="l">Ед. изм.</th></tr></thead><tbody>'+
+    base.map(function(b){return '<tr><td class="l">'+b[0]+'</td><td>'+b[1]+'</td><td class="l" style="color:var(--muted)">'+b[2]+'</td></tr>';}).join('')+'</tbody>';
+
+  // карточки сценариев
+  document.getElementById('sc-badges').innerHTML=s.map(function(x,i){
+    var ok=x.paybackMonth!=null && x.paybackMonth<=H;
+    return '<div class="badge"><div class="nm"><i style="background:var('+SC_COLORS[i]+')"></i>'+x.name+'</div>'+
+      '<div class="big">'+(x.paybackMonth?x.paybackMonth+'-й месяц':'не окупается')+'</div>'+
+      '<div class="st '+(ok?'ok':'no')+'">'+(ok?'✓ окупается в пределах '+H+' мес':'⚠ не окупается за '+H+' мес')+'</div>'+
+      '<div class="note" style="font-size:12.5px;color:var(--muted);margin-top:4px">Чистая прибыль: '+rub(x.netProfit)+'/мес</div></div>';
+  }).join('');
+
+  // таблица расчёта (строки 29–45 + окупаемость)
+  var rows=[['Трафик','traffic','num','чел/час'],['Конверсия в покупку','conversion','pct'],['Средний чек','avgCheck','rub'],
+    ['Выручка всего','revenue','rub',null,true],['Доля доставки','deliveryShare','pct'],['Выручка доставки','revDelivery','rub'],['Выручка розницы','revRetail','rub'],
+    ['Себестоимость','cogs','rub'],['Комиссия агрегаторов','commission','rub'],['ФОТ','payroll','rub'],['Аренда','rent','rub'],
+    ['Коммунальные услуги','utilities','rub'],['Амортизация','depreciation','rub'],['EBIT','ebit','rub',null,true],['Налог','tax','rub'],
+    ['Чистая прибыль','netProfit','rub',null,true],['Чистый денежный поток (1-й месяц, с CAPEX)','netCf','rub',null,true],
+    ['Денежный поток со 2-го месяца','monthlyCf','rub'],['Месяц окупаемости','paybackMonth','pb',null,true]];
+  var h='<thead><tr><th class="l sticky">Показатели</th>'+s.map(function(x){return '<th>'+x.name+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(rw){
+    h+='<tr'+(rw[4]?' class="tot"':'')+'><td class="l sticky">'+rw[0]+'</td>';
+    s.forEach(function(x){ var v=x[rw[1]], t;
+      if(rw[2]==='pct') t=pct(v); else if(rw[2]==='rub') t=rub(v); else if(rw[2]==='pb') t=v?v+'-й месяц':'не окупается'; else t=num(v)+' '+rw[3];
+      h+='<td'+(typeof v==='number'&&v<0?' class="neg"':'')+'>'+t+'</td>'; });
+    h+='</tr>';
+  });
+  document.getElementById('sc-calc').innerHTML=h+'</tbody>';
+
+  if(currentTab!=='scenarios') return;
+  var lg=s.map(function(x,i){return '<span><i class="line" style="background:var('+SC_COLORS[i]+')"></i>'+x.name+'</span>';}).join('');
+  document.getElementById('lg-sc').innerHTML=lg;
+  document.getElementById('lg-sc2').innerHTML=s.map(function(x,i){return '<span><i style="background:var('+SC_COLORS[i]+')"></i>'+x.name+'</span>';}).join('');
+  var months=M.calc(state).months; if(months.length<H){ months=M.calc(Object.assign({},state,{horizon:H})).months; }
+  var o=baseOpts();
+  mk('ch-sc-cum',{type:'line', data:{labels:months, datasets:s.map(function(x,i){ var c=css(SC_COLORS[i]);
+      return {label:x.name, data:x.cumFlow, borderColor:c, backgroundColor:c, borderWidth:2, pointRadius:0, pointHoverRadius:5, tension:0}; })}, options:o});
+  mk('ch-sc-bars',{type:'bar', data:{labels:['Выручка','Себестоимость','Чистая прибыль','Чистый ДП 1-го месяца'],
+      datasets:s.map(function(x,i){ return {label:x.name, data:[x.revenue,x.cogs,x.netProfit,x.netCf], backgroundColor:css(SC_COLORS[i]), borderRadius:4, borderSkipped:false, maxBarThickness:40}; })},
+    options:baseOpts()});
+}
+
+/* ---------- отчёты ---------- */
+function reportTable(id, r, rows){
+  var h='<thead><tr><th class="l sticky">Показатель</th><th class="l">Пояснение</th>'+r.months.map(function(m){return '<th>'+m+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(rw){
+    var cls=rw[3]?' class="tot"':'';
+    h+='<tr'+cls+'><td class="l sticky">'+rw[0]+'</td><td class="expl">'+rw[1]+'</td>';
+    r[rw[2]].forEach(function(v){ var t=rw[4]==='pct'?pct(v):num(v); h+='<td'+(v<0?' class="neg"':'')+'>'+t+'</td>'; });
+    h+='</tr>';
+  });
+  document.getElementById(id).innerHTML=h+'</tbody>';
+}
+function renderReports(r){
+  reportTable('tbl-pl', r, [
+    ['Выручка','Трафик × Часы × Дни × Конверсия × Чек','revenue',true],
+    ['Себестоимость сырья','Выручка × % себестоимости','cogsRaw'],
+    ['Себестоимость упаковки','3% от выручки','cogsPack'],
+    ['Санитария','2% от выручки','cogsSanit'],
+    ['Логистика сырья','5% от выручки','cogsLogist'],
+    ['Себестоимость итого','Сумма всех видов себестоимости','cogsTotal',true],
+    ['Валовая прибыль','Выручка − Себестоимость','grossProfit',true],
+    ['Валовая рентабельность','Валовая прибыль / Выручка','grossMargin',false,'pct'],
+    ['Комиссии агрегаторов','Выручка доставки × Комиссия','commissions'],
+    ['ФОТ','Зарплатный фонд','opexPayroll'],
+    ['Аренда','Аренда помещения','opexRent'],
+    ['Коммунальные','Коммунальные услуги','opexUtilities'],
+    ['Маркетинг','Маркетинговые расходы','opexMarketing'],
+    ['Прочие расходы','Админ расходы','opexOther'],
+    ['OPEX итого','Сумма опер. расходов','opexTotal',true],
+    ['EBITDA','Валовая − Комиссии − OPEX','ebitda',true],
+    ['Амортизация','Всё оборудование / срок полезного использования','depreciation'],
+    ['EBIT','EBITDA − Амортизация','ebit',true],
+    ['Финансовые расходы','Вводной параметр','finExpenses'],
+    ['Налоги УСН','Выручка × ставка УСН','tax'],
+    ['Чистая прибыль','EBIT − Финрасходы − Налоги','netProfit',true],
+    ['Чистая рентабельность','Чистая прибыль / Выручка','netMargin',false,'pct']
+  ]);
+  reportTable('tbl-cf', r, [
+    ['Остаток на начало','Остаток ДС','cashBegin'],
+    ['Поступления от продаж','Выручка минус комиссии','cashInSales'],
+    ['Инвестиции','Стоимость оборудования','cashCapex'],
+    ['Выплаты поставщикам','Себестоимость с отсрочкой','cashSuppliers'],
+    ['Выплаты ФОТ','ЗП + страх взносы','cashPayroll'],
+    ['Аренда и коммунальные','Фиксированные расходы','cashRentUtil'],
+    ['Маркетинг','Маркетинговые расходы','cashMarketing'],
+    ['Прочие расходы','Админ расходы','cashOther'],
+    ['Налоги','УСН 6%','cashTax'],
+    ['Итого приток','Сумма поступлений','inflow',true],
+    ['Итого отток','Сумма выплат','outflow',true],
+    ['Чистый ДП','Приток − Отток','netCf',true],
+    ['Остаток на конец','Начало + ЧДП','cashEnd',true],
+    ['Накопленный поток','Сумма с начала','cumFlow',true]
+  ]);
+}
+
+/* ---------- аналитическая записка ---------- */
+var MISS=[
+  {id:'writeoff', n:'Списания готовой продукции', s:'«Параметры» F10: 6 % выручки (норма по отрасли 2–5 %)', v:function(r,o){return r.revenue[0]*o.writeoffRate;}, cash:true},
+  {id:'acq', n:'Эквайринг', s:'«Параметры» F24: 2 % оборота по картам (в оценке — вся выручка)', v:function(r){return r.revenue[0]*0.02;}, cash:true},
+  {id:'sanc', n:'Санконтроль', s:'«Параметры» F27: анализы и проверки', v:function(){return 30000;}, cash:true},
+  {id:'tbo', n:'Уборка и вывоз ТБО', s:'«Параметры» F30', v:function(){return 8000;}, cash:true},
+  {id:'repair', n:'Ремонт и сервис оборудования', s:'«Параметры» F26: 3 % CAPEX в год', v:function(){return M.FIXED.capex*0.03/12;}, cash:true},
+  {id:'contrib', n:'Страховые взносы с ФОТ', s:'В ДДС ФОТ ×1,34, а в ОПиУ взносов нет', v:function(){return M.FIXED.payroll*0.34;}, cash:false}
+];
+var memo={miss:{writeoff:true,acq:true,sanc:true,tbo:true,repair:true,contrib:true},
+  lev:{check:{on:true,v:10},traffic:{on:true,v:5},cogs:{on:true,v:3},fee:{on:true,v:15},waste:{on:true,v:3},tax:{on:true,v:1}}};
+var LEVERS=[
+  {id:'check', n:'Поднять средний чек', s:'Комбо «кофе + выпечка», допродажа напитка, премиальная линейка к выходным', min:0,max:20,step:1, fmt:function(v){return '+'+v+' %';}},
+  {id:'traffic', n:'Увеличить трафик', s:'Вывеска и навигация, утренние предложения, карточка в картах и отзывы', min:0,max:20,step:1, fmt:function(v){return '+'+v+' %';}},
+  {id:'cogs', n:'Снизить долю себестоимости', s:'Техкарты с контролем выхода, закупка муки и масла у производителя, тендер 2–3 поставщиков', min:0,max:8,step:0.5, fmt:function(v){return '−'+nf.format(v)+' п.п.';}},
+  {id:'fee', n:'Снизить комиссию агрегаторов', s:'Самовывоз по предзаказу, своя доставка через сайт и мессенджер, пересмотр тарифа', min:5,max:20,step:1, fmt:function(v){return 'комиссия '+v+' %';}},
+  {id:'waste', n:'Сократить списания', s:'Выпечка партиями по часам продаж, скидка после 19:00, остатки — в кафе или фудшеринг', min:0,max:6,step:0.5, fmt:function(v){return nf.format(v)+' % выручки';}},
+  {id:'tax', n:'Уменьшить УСН на страховые взносы', s:'Налог на УСН «доходы» уменьшается на взносы за работников, но не более чем на 50 %', toggle:true}
+];
+
+function adjOpts(over){ return Object.assign({writeoffRate:0.06, taxReduce:false}, over||{}); }
+function adjust(r, o){
+  var pl=0, cash=0;
+  MISS.forEach(function(m){ if(!memo.miss[m.id]) return; var v=m.v(r,o); pl+=v; if(m.cash) cash+=v; });
+  var taxSave = o.taxReduce ? Math.min(M.FIXED.payroll*0.34, r.tax[0]/2) : 0;
+  var npAdj = r.netProfit[0] - pl + taxSave;
+  var dpo = r.cogsRaw[0]*r.fixed.dpoDays/30, other = r.cogsPack[0]+r.cogsSanit[0]+r.cogsLogist[0];
+  var cf=[], cum=[], acc=0, mn=0, pb=null;
+  for(var t=0;t<r.T;t++){
+    var v = r.netCf[t] - (t>=1?dpo:0) - other - cash + taxSave;
+    cf.push(v); acc+=v; cum.push(acc); mn=Math.min(mn,acc); if(pb===null && acc>0) pb=t+1;
+  }
+  return {pl:pl, cash:cash, taxSave:taxSave, npAdj:npAdj, cf:cf, cum:cum, payback:pb, need:Math.max(0,-mn), end:acc};
+}
+function pbText(p){ return p ? p+'-й месяц' : 'не окупается'; }
+function memoYearOf(t){ var d=new Date(state.startDate+'T00:00:00'); return d.getFullYear()+Math.floor((d.getMonth()+t)/12); }
+
+function leverModel(only){
+  // only: id одной меры или null — все включённые
+  var inp=Object.assign({},state), fx=Object.assign({},M.FIXED), o=adjOpts({writeoffRate: memo.miss.writeoff?0.06:0});
+  LEVERS.forEach(function(L){
+    var st=memo.lev[L.id]; if(only? L.id!==only : !st.on) return; var v=st.v;
+    if(L.id==='check') inp.avgCheck=state.avgCheck*(1+v/100);
+    if(L.id==='traffic') inp.traffic=state.traffic*(1+v/100);
+    if(L.id==='cogs') inp.cogsShare=Math.max(0,state.cogsShare-v/100);
+    if(L.id==='fee') fx.aggregatorFee=v/100;
+    if(L.id==='waste' && memo.miss.writeoff) o.writeoffRate=v/100;
+    if(L.id==='tax') o.taxReduce=true;
+  });
+  var r=M.calc(inp,fx); return {r:r, a:adjust(r,o)};
+}
+
+function memoErrors(r, a){
+  var R=r.revenue[0], F=M.FIXED, dpo=r.cogsRaw[0]*F.dpoDays/30, other=r.cogsPack[0]+r.cogsSanit[0]+r.cogsLogist[0];
+  var cushion=F.payroll*1.34+F.rent+F.utilities+F.otherAdmin+state.marketing, stock=r.cogsRaw[0]*12/30;
+  return [
+    {sev:'h', n:'Отсрочка поставщикам никогда не оплачивается', amt:rub(dpo)+'/мес',
+     b:'В строке 55 каждый месяц платится только треть сырья: <code>C27×(1−20/30)</code>. Остальные 2/3 «откладываются», но в следующем месяце не платятся. За '+r.T+' мес неоплаченных счетов набегает <b>'+rub(dpo*(r.T-1))+'</b>, и остаток денег завышен на эту сумму.<br><b>Как исправить:</b> в месяце 2 и далее <code>=D27*(1-DPO/30)+C27*DPO/30</code> — платим долю текущего месяца и долг прошлого.'},
+    {sev:'h', n:'Упаковка, санитария и логистика сырья не попадают в ДДС', amt:rub(other)+'/мес',
+     b:'В ОПиУ эти статьи есть (строки 28–30, 10 % выручки), а в оттоке ДДС — нет. Денежный поток завышен на <b>'+rub(other)+'</b> каждый месяц.<br><b>Как исправить:</b> добавить в строку 55 <code>+C28+C29+C30</code> или вывести их отдельными строками оттока.'},
+    {sev:'h', n:'ФОТ в ОПиУ без страховых взносов', amt:rub(F.payroll*0.34)+'/мес',
+     b:'В ДДС (строка 56) ФОТ умножается на 1,34, а в ОПиУ (строка 35) — нет. Прибыль завышена на сумму взносов.<br><b>Как исправить:</b> в строке 35 <code>=C19*1.34</code>, в строке 56 <code>=C35</code>.'},
+    {sev:'m', n:'Маркетинг считается как 0,5 ₽, а не как доля выручки', amt:'0,5 % = '+rub(R*0.005)+'; 3 % = '+rub(R*0.03),
+     b:'На листе «Параметры» F25 подписан «от выручки», исследование — 1–5 % выручки. Формула прибавляет 0,5 рубля.<br><b>Как исправить:</b> <code>=C26*\'Параметры\'!F25</code> и указать в F25 долю: 0,005 (0,5 %) или 0,03 (3 %).'},
+    {sev:'m', n:'Потребность в инвестициях без запаса сырья и денежной подушки', amt:rub(stock+cushion),
+     b:'«Параметры» F39 (запас сырья 12 дней) и F42 (подушка 30 дней постоянных расходов) заполнены, но не используются. Запас сырья — <b>'+rub(stock)+'</b>, подушка — <b>'+rub(cushion)+'</b>.<br><b>Как исправить:</b> в строке 54 первого месяца <code>=CAPEX + C27*DIO/30 + постоянные выплаты×30/30</code>.'},
+    {sev:'m', n:'Сценарный лист теряет часть расходов', amt:rub(other+state.marketing+F.otherAdmin)+'/мес',
+     b:'EBIT сценариев (строка 42) не вычитает упаковку, санитарию, логистику, маркетинг и прочие расходы — прибыль сценариев выше, чем в «Финмодели».<br><b>Как исправить:</b> добавить эти строки в расчёт сценариев или считать сценарии через лист «Финмодель».'},
+    {sev:'m', n:'Себестоимость упаковки, санитарии и логистики — константы в формулах', amt:'—',
+     b:'В формулах 3 / 2 / 5 % от выручки, а в «Параметрах» другие единицы: 0,03 ₽/шт, 1 % COGS, 2 ₽/кг — и ссылок на них нет. Изменение параметров не влияет на модель.<br><b>Как исправить:</b> привести эти параметры к доле выручки и сослаться на ячейки «Параметров».'},
+    {sev:'l', n:'IRR не считается, если все потоки положительные', amt:'—',
+     b:'При трафике 500 чел/час поток первого месяца уже покрывает оборудование, отрицательных потоков нет и IRR не определена. Это признак нереалистичных вводных, а не ошибка функции.'},
+    {sev:'l', n:'Доля розницы не участвует в расчётах', amt:'—',
+     b:'«% розница» нужна только для проверки микса. Если у розницы и доставки разный чек или себестоимость, их стоит считать отдельными строками.'}
+  ];
+}
+
+function renderMemo(r){
+  var F=M.FIXED, R=r.revenue[0], baseO=adjOpts({writeoffRate:memo.miss.writeoff?0.06:0}), a=adjust(r, baseO), k=r.kpi;
+  document.getElementById('memo-meta').textContent='Подготовлено по текущим параметрам: трафик '+num(state.traffic)+' чел/час, чек '+rub(state.avgCheck)+', горизонт '+r.T+' мес. Записка пересчитывается при каждом изменении.';
+
+  // 1. Вывод
+  var ok=a.payback!==null;
+  document.getElementById('m-verdict').innerHTML='<div class="verdict '+(ok?'ok':'bad')+'"><span class="ico">'+(ok?'✓':'⚠')+'</span><div><b>'+
+    (ok? 'Проект окупается и с учётом всех расходов — на '+a.payback+'-м месяце'
+       : 'По формулам таблицы проект окупается '+(k.paybackMonth?'на '+k.paybackMonth+'-м месяце':'— нет')+', но с учётом всех расходов не окупается за '+r.T+' мес')+'</b>'+
+    'Чистая прибыль по модели — '+rub(r.netProfit[0])+' в месяц. Если добавить расходы из «Параметров», которых нет в модели ('+rub(a.pl)+'), она становится <b style="display:inline">'+rub(a.npAdj)+'</b>. '+
+    (ok?'Запас по прибыли есть, но меньше, чем показывает модель.':'Решения, которые возвращают проект в плюс, — в разделе 7.')+'</div></div>';
+  function cc(l,mv,av,neg){ return '<div class="c"><div class="l">'+l+'</div><div class="v">'+mv+'<small>с поправками: <span class="'+(neg?'bad':'good')+'">'+av+'</span></small></div></div>'; }
+  document.getElementById('m-cmp').innerHTML=
+    cc('<span class="term" tabindex="0" data-tip="Строка 46: EBIT − финрасходы − УСН. Поправки — раздел 2.">Чистая прибыль в месяц</span>', rub(r.netProfit[0]), rub(a.npAdj), a.npAdj<0)+
+    cc('<span class="term" tabindex="0" data-tip="Первый месяц, когда накопленный денежный поток больше нуля.">Окупаемость</span>', pbText(k.paybackMonth), pbText(a.payback), !ok)+
+    cc('<span class="term" tabindex="0" data-tip="Самый глубокий минус накопленного денежного потока: столько своих денег нужно, чтобы не уйти в кассовый разрыв.">Потребность в деньгах</span>', rub(k.investmentNeed), rub(a.need), a.need>k.investmentNeed)+
+    cc('Деньги на конец горизонта', rub(r.cashEnd[r.T-1]), rub(a.end), a.end<0);
+
+  // 2. Неучтённые расходы
+  document.getElementById('m-miss-list').innerHTML=MISS.map(function(m){
+    return '<label class="chk"><input type="checkbox" data-miss="'+m.id+'"'+(memo.miss[m.id]?' checked':'')+'><span class="t"><span class="n">'+m.n+'</span><br><span class="s">'+m.s+'</span></span><span class="amt">'+rub(m.v(r,adjOpts()))+'/мес</span></label>';
+  }).join('');
+  document.getElementById('m-miss-total').innerHTML='Отмечено: <b>'+rub(a.pl)+' в месяц</b> — '+pct(a.pl/R)+' выручки, '+pct(a.pl/Math.max(1e-9,Math.abs(r.netProfit[0])))+' от прибыли по модели.';
+
+  // 3. Ошибки
+  var sevName={h:'высокая',m:'средняя',l:'низкая'};
+  var openSet={}; document.querySelectorAll('#m-err-list details[open]').forEach(function(d){openSet[d.dataset.i]=1;});
+  document.getElementById('m-err-list').innerHTML=memoErrors(r,a).map(function(e,i){
+    return '<details class="issue" data-i="'+i+'"'+(openSet[i]?' open':'')+'><summary><span class="sev '+e.sev+'">'+sevName[e.sev]+'</span><span class="nm">'+e.n+'</span><span class="amt">'+e.amt+'</span></summary><div class="body">'+e.b+'</div></details>';
+  }).join('');
+
+  // 4. Деньги
+  document.getElementById('m-cash-cmp').innerHTML=
+    cc('Окупаемость', pbText(k.paybackMonth), pbText(a.payback), !ok)+
+    cc('Потребность в деньгах', rub(k.investmentNeed), rub(a.need), a.need>k.investmentNeed)+
+    cc('Накоплено к концу горизонта', rub(r.cumFlow[r.T-1]), rub(a.end), a.end<0);
+
+  // 5. Риски — запас прочности по модели
+  var base=r.netProfit[0];
+  var drivers=[
+    ['Выручка (трафик, конверсия, чек, часы, дни)', function(s){return M.calc(Object.assign({},state,{traffic:state.traffic*(1+s)})).netProfit[0];}, -1],
+    ['Доля себестоимости', function(s){return M.calc(Object.assign({},state,{cogsShare:state.cogsShare*(1+s)})).netProfit[0];}, 1],
+    ['ФОТ', function(s){return M.calc(state,Object.assign({},F,{payroll:F.payroll*(1+s)})).netProfit[0];}, 1],
+    ['Аренда', function(s){return M.calc(state,Object.assign({},F,{rent:F.rent*(1+s)})).netProfit[0];}, 1],
+    ['Ставка УСН', function(s){return M.calc(state,Object.assign({},F,{taxRate:F.taxRate*(1+s)})).netProfit[0];}, 1],
+    ['Комиссия агрегаторов', function(s){return M.calc(state,Object.assign({},F,{aggregatorFee:F.aggregatorFee*(1+s)})).netProfit[0];}, 1]
+  ].map(function(d){ var slope=(d[1](0.01)-d[1](-0.01))/2; var m=(base<=0||slope===0)?null:Math.abs(base/slope); return {n:d[0], m:m}; })
+   .sort(function(x,y){return (x.m==null?-1:x.m)-(y.m==null?-1:y.m);});
+  var good=css('--good'), bad=css('--bad'), warn='#d69e2e';
+  if(currentTab==='memo'){
+    var o5=baseOpts({indexAxis:'y', interaction:{mode:'nearest',intersect:false,axis:'y'}});
+    o5.scales={x:{max:200,border:{display:false},grid:{color:css('--grid')},ticks:{callback:function(v){return v+' %';}}}, y:{grid:{display:false},border:{color:css('--grid')}}};
+    o5.plugins.tooltip.callbacks={label:function(c){ var m=drivers[c.dataIndex].m; if(m==null) return ' прибыль уже ≤ 0'; return ' Прибыль = 0 при '+(drivers[c.dataIndex].n.indexOf('Выручка')===0?'падении':'росте')+' на '+nf.format(m)+' % · '+(m<20?'опасно':m<50?'внимание':'устойчиво'); }};
+    mk('ch-memo-risk',{type:'bar', data:{labels:drivers.map(function(d){return d.n;}), datasets:[{data:drivers.map(function(d){return d.m==null?0:Math.min(d.m,200);}),
+      backgroundColor:drivers.map(function(d){return d.m==null||d.m<20?bad:d.m<50?warn:good;}), borderRadius:4, borderSkipped:false, maxBarThickness:22}]}, options:o5});
+  }
+  var weakest=drivers[0];
+  document.getElementById('m-risk-note').innerHTML= base<=0 ? '⚠ Прибыль по модели уже нулевая или отрицательная — запаса прочности нет.' :
+    'Самое уязвимое место — <b>'+weakest.n.toLowerCase()+'</b>: прибыль обнуляется при отклонении на <b>'+nf.format(weakest.m)+' %</b>. Цвет: красный — меньше 20 % (опасно), жёлтый — 20–50 % (внимание), зелёный — больше 50 % (устойчиво). Шкала обрезана на 200 %. Поправки раздела 2 уменьшают запас ещё сильнее.';
+
+  // 6. Налоги
+  var contrib=F.payroll*0.34, t6=r.tax[0], t6r=t6-Math.min(contrib,t6/2);
+  var exp15=r.cogsTotal[0]+r.commissions[0]+r.opexTotal[0]+a.pl+(memo.miss.contrib?0:contrib);
+  var t15=Math.max(0.15*(R-exp15), 0.01*R);
+  var rows=[['УСН 6 % с выручки (как в модели)',t6],['УСН 6 % с уменьшением на взносы (до 50 % налога)',t6r],['УСН 15 % «доходы минус расходы» (оценка, минимум 1 % выручки)',t15]];
+  var minV=Math.min(t6,t6r,t15);
+  document.getElementById('m-tax-tbl').innerHTML='<thead><tr><th class="l">Вариант</th><th>Налог в месяц</th><th>За год</th><th>Экономия к модели в год</th></tr></thead><tbody>'+
+    rows.map(function(x){return '<tr'+(x[1]===minV?' class="tot"':'')+'><td class="l" style="white-space:normal">'+x[0]+(x[1]===minV?' ✓ дешевле всего':'')+'</td><td>'+rub(x[1])+'</td><td>'+rub(x[1]*12)+'</td><td>'+rub((t6-x[1])*12)+'</td></tr>';}).join('')+'</tbody>';
+  var TH={2025:60e6,2026:20e6,2027:15e6,2028:10e6}, years={};
+  for(var t=0;t<r.T;t++){ var y=memoYearOf(t); years[y]=(years[y]||0)+r.revenue[t]; }
+  var vatRows=Object.keys(years).map(function(y){ var th=TH[y]||10e6, run=R*12, over=run>th;
+    return '<tr><td class="l">'+y+'</td><td>'+rub(years[y])+'</td><td>'+rub(run)+'</td><td>'+rub(th)+'</td><td class="l" style="white-space:normal">'+(over?'⚠ годовой темп выше порога — НДС 5 % без вычетов ≈ '+rub(R*5/105)+'/мес или 22 % с вычетами':'✓ ниже порога, освобождение от НДС')+'</td></tr>'; }).join('');
+  document.getElementById('m-vat').innerHTML='<p class="lead" style="margin:6px 0 8px"><b>Порог освобождения от <span class="term" tabindex="0" data-tip="На УСН организация освобождена от НДС, пока доходы за год не превышают порога. Сверх порога — НДС по пониженной ставке без вычетов или по общей с вычетами.">НДС на УСН</span></b> по изменениям НК РФ, принятым в 2025 году: 2026 — 20 млн ₽, 2027 — 15 млн ₽, 2028 — 10 млн ₽. Сверьте с действующей редакцией ст. 145 и 164 НК РФ.</p>'+
+    '<div class="tbl-wrap"><table><thead><tr><th class="l">Год</th><th>Выручка в модели за год</th><th>Годовой темп (мес × 12)</th><th>Порог</th><th class="l">Вывод</th></tr></thead><tbody>'+vatRows+'</tbody></table></div>';
+
+  // 7. Симулятор
+  var b0=a, all=leverModel(null);
+  document.getElementById('m-levers').innerHTML=LEVERS.map(function(L){
+    var st=memo.lev[L.id], one=leverModel(L.id), eff=one.a.npAdj-b0.npAdj;
+    return '<div class="lever'+(st.on?'':' off')+'"><input type="checkbox" data-lev="'+L.id+'"'+(st.on?' checked':'')+' aria-label="'+esc(L.n)+'">'+
+      '<div><div class="n">'+L.n+'</div><div class="s">'+L.s+'</div></div>'+
+      (L.toggle?'<div class="rng rv">мера включается галочкой</div>':'<div class="rng"><input type="range" data-levv="'+L.id+'" min="'+L.min+'" max="'+L.max+'" step="'+L.step+'" value="'+st.v+'" aria-label="'+esc(L.n)+'"><div class="rv">'+L.fmt(st.v)+'</div></div>')+
+      '<div class="eff">'+(eff>=0?'+':'')+rub(eff)+'<div class="s" style="font-weight:500">в месяц</div></div></div>';
+  }).join('');
+  var A=all.a, extra=A.payback?0:Math.max(0,-A.end/r.T);
+  function bc(l,was,now,good){ return '<div class="c"><div class="l">'+l+'</div><div class="row"><span class="was">'+was+'</span><span class="now" style="color:'+(good?'var(--good)':'var(--bad)')+'">'+now+'</span></div></div>'; }
+  document.getElementById('m-ba').innerHTML=
+    bc('Чистая прибыль с поправками', rub(b0.npAdj)+'/мес', rub(A.npAdj)+'/мес', A.npAdj>0)+
+    bc('Окупаемость с поправками', pbText(b0.payback), pbText(A.payback), A.payback!==null)+
+    bc('Потребность в деньгах', rub(b0.need), rub(A.need), A.need<=b0.need)+
+    bc('Накоплено к концу горизонта', rub(b0.end), rub(A.end), A.end>0)+
+    '<div class="c" style="grid-column:1/-1;background:var(--accent-soft);border-color:var(--accent)"><div class="l" style="color:var(--text)">'+
+    (A.payback? '<b>Рекомендация:</b> включённые меры выводят проект на окупаемость на <b>'+A.payback+'-м месяце</b> с учётом всех расходов. Начните с мер с наибольшим эффектом справа — они дают основную часть прироста.'
+              : '<b>Включённых мер недостаточно.</b> Чтобы окупиться за '+r.T+' мес, нужно ещё примерно <b>'+rub(extra)+'</b> денежного потока в месяц — усильте меры по чеку и себестоимости или снизьте аренду и ФОТ.')+'</div></div>';
+
+  // 8. План
+  var plan=[
+    'Исправить ДДС: оплату отсрочки поставщикам и отток по упаковке, санитарии и логистике (раздел 3).',
+    'Добавить в ОПиУ взносы, списания, эквайринг, санконтроль, ТБО и ремонт — '+rub(a.pl)+' в месяц (раздел 2).',
+    'Перевести маркетинг в долю выручки и утвердить бюджет 1–5 % выручки.',
+    'Пересчитать потребность в деньгах: оборудование, запас сырья и подушка 30 дней — не меньше '+rub(Math.max(a.need, F.capex))+'.',
+    'С бухгалтером: уменьшение УСН на взносы, сравнение с УСН 15 %, проверка порога НДС на следующий год (раздел 6).',
+    'Проверить трафик замером у точки 3–5 дней: вся модель держится на '+num(state.traffic)+' чел/час.',
+    'Внедрить меры по чеку, себестоимости и списаниям (раздел 7) и сверять факт с моделью каждый месяц.',
+    'После исправлений пересчитать сценарии и обновить эту записку.'
+  ];
+  var done={}; try{ done=JSON.parse(localStorage.getItem('finmodel-plan')||'{}'); }catch(e){}
+  var n=plan.filter(function(_,i){return done[i];}).length;
+  document.getElementById('m-plan-bar').style.width=(n/plan.length*100)+'%';
+  document.getElementById('m-plan-list').innerHTML=plan.map(function(p,i){
+    return '<label class="chk'+(done[i]?' done':'')+'"><input type="checkbox" data-plan="'+i+'"'+(done[i]?' checked':'')+'><span class="t"><span class="n">'+(i+1)+'. '+p+'</span></span></label>';
+  }).join('')+'<div class="note-box">Выполнено '+n+' из '+plan.length+'.</div>';
+
+  if(currentTab==='memo'){
+    var labels=r.months;
+    mk('ch-memo-cash',{type:'line', data:{labels:labels, datasets:[
+      {label:'По формулам таблицы', data:r.cumFlow, borderColor:css('--s1'), backgroundColor:css('--s1'), borderWidth:2, pointRadius:0, pointHoverRadius:5, tension:0},
+      {label:'С поправками', data:a.cum, borderColor:css('--s2'), backgroundColor:css('--s2'), borderWidth:2, pointRadius:0, pointHoverRadius:5, tension:0}]}, options:baseOpts()});
+  }
+}
+
+var pageMemo=document.getElementById('page-memo');
+pageMemo.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.dataset.miss){ memo.miss[el.dataset.miss]=el.checked; renderAll(); }
+  else if(el.dataset.lev){ memo.lev[el.dataset.lev].on=el.checked; renderAll(); }
+  else if(el.dataset.plan!=null){ var d={}; try{ d=JSON.parse(localStorage.getItem('finmodel-plan')||'{}'); }catch(x){} d[el.dataset.plan]=el.checked; try{ localStorage.setItem('finmodel-plan',JSON.stringify(d)); }catch(x){} renderAll(); }
+});
+pageMemo.addEventListener('input',function(e){
+  var el=e.target; if(!el.dataset.levv) return;
+  var L=LEVERS.filter(function(x){return x.id===el.dataset.levv;})[0];
+  el.parentNode.querySelector('.rv').textContent=L.fmt(parseFloat(el.value));
+});
+pageMemo.addEventListener('change',function(e){
+  var el=e.target; if(!el.dataset.levv) return;
+  var id=el.dataset.levv; memo.lev[id].v=parseFloat(el.value); memo.lev[id].on=true; renderAll();
+  var again=document.querySelector('input[data-levv="'+id+'"]'); if(again) again.focus();
+});
+document.getElementById('memo-toc').addEventListener('click',function(e){
+  var a=e.target.closest('a'); if(!a) return; e.preventDefault();
+  var t=document.querySelector(a.getAttribute('href')); if(t) t.scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+/* тур по записке */
+var TOUR=[
+  ['m-sum','Начните с вывода','Здесь две колонки: что показывают формулы таблицы и что получится с учётом всех расходов. Если они сильно расходятся — модели нельзя доверять без исправлений.'],
+  ['m-miss','Решите, какие расходы учитывать','Галочки включают расходы из листа «Параметры», которых нет в модели. Снимите галочку, если статья у вас действительно не возникает.'],
+  ['m-err','Откройте ошибки формул','Нажмите на строку: внутри — что не так, сколько это стоит в рублях и готовая исправленная формула для таблицы.'],
+  ['m-cash','Сравните денежные потоки','Синяя линия — модель, оранжевая — с поправками. Точка пересечения нуля — месяц окупаемости.'],
+  ['m-risk','Найдите слабое место','Короткий красный столбец — параметр, небольшое ухудшение которого съедает всю прибыль. Его контролируют в первую очередь.'],
+  ['m-tax','Проверьте налоги','Сравнение вариантов УСН и порога НДС. Цифры — оценка, решение принимается с бухгалтером.'],
+  ['m-sim','Подберите решения','Включайте меры и двигайте ползунки. Внизу — итог: прибыль, окупаемость и потребность в деньгах после всех мер.'],
+  ['m-plan','Отмечайте выполненное','План работ по порядку. Галочки сохраняются в этом браузере.']
+];
+var tourI=-1, tourDim=null, tourBox=null;
+function tourEnd(){ if(tourDim){tourDim.remove();tourBox.remove();} tourDim=tourBox=null; document.querySelectorAll('.tour-target').forEach(function(x){x.classList.remove('tour-target');}); tourI=-1; try{localStorage.setItem('finmodel-tour','1');}catch(e){} }
+function tourShow(i){
+  if(i<0||i>=TOUR.length){ tourEnd(); return; }
+  tourI=i;
+  if(!tourDim){ tourDim=document.createElement('div'); tourDim.className='tour-dim'; tourDim.addEventListener('click',tourEnd); document.body.appendChild(tourDim);
+    tourBox=document.createElement('div'); tourBox.className='tour-box'; tourBox.setAttribute('role','dialog'); tourBox.setAttribute('aria-live','polite'); document.body.appendChild(tourBox); }
+  document.querySelectorAll('.tour-target').forEach(function(x){x.classList.remove('tour-target');});
+  var t=document.getElementById(TOUR[i][0]); t.classList.add('tour-target'); t.scrollIntoView({block:'start'});
+  var rc=t.getBoundingClientRect(), vh=window.innerHeight, bh=200;
+  var top = rc.top+90+bh < vh ? Math.max(16, rc.top+90) : Math.max(16, vh-bh-16);
+  tourBox.style.top=top+'px'; tourBox.style.left=Math.max(16, Math.min(rc.left+16, window.innerWidth-376))+'px';
+  tourBox.innerHTML='<div class="st">Шаг '+(i+1)+' из '+TOUR.length+'</div><h4>'+TOUR[i][1]+'</h4><p>'+TOUR[i][2]+'</p><div class="nav">'+
+    '<button class="btn" type="button" data-tour="close">Закрыть</button>'+(i>0?'<button class="btn" type="button" data-tour="prev">Назад</button>':'')+
+    '<button class="btn primary" type="button" data-tour="next">'+(i===TOUR.length-1?'Готово':'Далее')+'</button></div>';
+  tourBox.querySelector('[data-tour="next"]').focus();
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-tour]'); if(!b) return;
+  var a=b.dataset.tour; if(a==='close') tourEnd(); else tourShow(tourI+(a==='next'?1:-1));
+});
+document.addEventListener('keydown',function(e){ if(tourI<0) return; if(e.key==='Escape') tourEnd(); if(e.key==='ArrowRight') tourShow(tourI+1); if(e.key==='ArrowLeft') tourShow(tourI-1); });
+document.getElementById('tour-start').addEventListener('click',function(){ tourShow(0); });
+
+/* ---------- навигация ---------- */
+var currentTab='model';
+function setTab(t){
+  if(['model','scenarios','reports','memo'].indexOf(t)<0) t='model';
+  currentTab=t;
+  document.querySelectorAll('.tab').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.tab===t?'true':'false'); });
+  document.querySelectorAll('[data-page]').forEach(function(s){ s.hidden = s.dataset.page!==t; });
+  document.getElementById('layout').classList.toggle('no-aside', t==='reports');
+  if(location.hash!=='#'+t) history.replaceState(null,'','#'+t);
+  closePops(); if(t!=='memo' && tourI>=0) tourEnd(); renderAll();
+  if(t==='memo'){ var seen=null; try{ seen=localStorage.getItem('finmodel-tour'); }catch(e){} if(!seen) setTimeout(function(){ if(currentTab==='memo' && tourI<0) tourShow(0); },400); }
+}
+document.querySelectorAll('.tab').forEach(function(b){ b.addEventListener('click', function(){ setTab(b.dataset.tab); }); });
+window.addEventListener('hashchange', function(){ var t=location.hash.slice(1); if(t!==currentTab && ['model','scenarios','reports','memo'].indexOf(t)>=0) setTab(t); });
+
+/* ---------- панель параметров на телефоне ---------- */
+var asideEl=document.getElementById('aside'), asideBtn=document.getElementById('aside-toggle');
+function setAside(collapsed){
+  asideEl.classList.toggle('collapsed', collapsed);
+  asideBtn.setAttribute('aria-expanded', collapsed?'false':'true');
+  asideBtn.querySelector('.chev').textContent = collapsed ? 'Изменить ▾' : 'Свернуть ▴';
+}
+asideBtn.addEventListener('click', function(){ setAside(!asideEl.classList.contains('collapsed')); });
+setAside(window.matchMedia('(max-width:980px)').matches);
+
+/* ---------- общий пересчёт ---------- */
+function renderAll(){
+  var r=M.calc(state);
+  document.getElementById('aside-sum').textContent='Трафик '+num(state.traffic)+' чел/час · конверсия '+pct(state.conversion)+' · чек '+rub(state.avgCheck)+' · себестоимость '+pct(state.cogsShare)+' · '+r.T+' мес';
+  var mw=document.getElementById('mix-warn');
+  mw.hidden=r.kpi.mixOk; mw.textContent='⚠ Розница + доставка = '+pct(state.retailShare+state.deliveryShare)+', должно быть 100 %.';
+  renderCards(r);
+  if(currentTab==='model') renderModelCharts(r);
+  renderScenarios();
+  if(currentTab==='reports') renderReports(r);
+  renderMemo(r);
+}
+if(window.matchMedia){ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll); }
+
+buildInputs(); buildFixed(); buildDeltas();
+setTab((location.hash||'#model').slice(1));
+})();
+</script>
+</body>
+</html>
